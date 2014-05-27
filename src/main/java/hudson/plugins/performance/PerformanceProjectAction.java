@@ -438,7 +438,6 @@ public final class PerformanceProjectAction implements Action {
         }
 
         final List<AbstractBuild> buildsRange = getBuildsRange(request);
-
         ThroughputChart.render(request, response, performanceReportNameFile, buildsRange);
     }
 

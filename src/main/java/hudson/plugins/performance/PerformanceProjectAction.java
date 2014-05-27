@@ -168,52 +168,7 @@ public final class PerformanceProjectAction implements Action {
     return chart;
   }
 
-  protected static JFreeChart createThroughputChart(final CategoryDataset dataset) {
-
-    final JFreeChart chart = ChartFactory.createLineChart(
-        Messages.ProjectAction_Throughput(), // chart title
-        null, // unused
-        Messages.ProjectAction_RequestsPerSeconds(), // range axis label
-        dataset, // data
-        PlotOrientation.VERTICAL, // orientation
-        true, // include legend
-        true, // tooltips
-        false // urls
-    );
-
-    final LegendTitle legend = chart.getLegend();
-    legend.setPosition(RectangleEdge.BOTTOM);
-
-    chart.setBackgroundPaint(Color.white);
-
-    final CategoryPlot plot = chart.getCategoryPlot();
-
-    plot.setBackgroundPaint(Color.WHITE);
-    plot.setOutlinePaint(null);
-    plot.setRangeGridlinesVisible(true);
-    plot.setRangeGridlinePaint(Color.black);
-
-    CategoryAxis domainAxis = new ShiftedCategoryAxis(null);
-    plot.setDomainAxis(domainAxis);
-    domainAxis.setCategoryLabelPositions(CategoryLabelPositions.UP_90);
-    domainAxis.setLowerMargin(0.0);
-    domainAxis.setUpperMargin(0.0);
-    domainAxis.setCategoryMargin(0.0);
-
-    final NumberAxis rangeAxis = (NumberAxis) plot.getRangeAxis();
-    rangeAxis.setStandardTickUnits(NumberAxis.createIntegerTickUnits());
-
-    final LineAndShapeRenderer renderer = (LineAndShapeRenderer) plot.getRenderer();
-    renderer.setBaseStroke(new BasicStroke(4.0f));
-    ColorPalette.apply(renderer);
-
-    // crop extra space around the graph
-    plot.setInsets(new RectangleInsets(5.0, 0, 0, 5.0));
-
-    return chart;
-  }
-
-  protected static JFreeChart createSummarizerChart(CategoryDataset dataset,
+    protected static JFreeChart createSummarizerChart(CategoryDataset dataset,
       String yAxis, String chartTitle) {
 
     final JFreeChart chart = ChartFactory.createBarChart(chartTitle, // chart
@@ -456,6 +411,19 @@ public final class PerformanceProjectAction implements Action {
         createRespondingTimeChart(dataSetBuilderAverage.build()), 400, 200);
   }
 
+    private List<AbstractBuild> getBuildsRange(final StaplerRequest request) {
+        final List<? extends AbstractBuild<?, ?>> builds = getProject().getBuilds();
+        final Range buildsLimits = getFirstAndLastBuild(request, builds);
+
+        final List<AbstractBuild> buildsRange = new LinkedList<AbstractBuild>();
+        for (final AbstractBuild<?, ?> build : builds) {
+            if (buildsLimits.in(build.number) && buildsLimits.includedByStep(build.number)) {
+                buildsRange.add(build);
+            }
+        }
+        return buildsRange;
+    }
+
     @SuppressWarnings("UnusedDeclaration")
     public void doThroughputGraph(final StaplerRequest request, final StaplerResponse response) throws IOException {
         final String performanceReportNameFile = getPerformanceReportNameFile(request);
@@ -469,40 +437,9 @@ public final class PerformanceProjectAction implements Action {
             return;
         }
 
-        final List<? extends AbstractBuild<?, ?>> builds = getProject().getBuilds();
-        final Range buildsLimits = getFirstAndLastBuild(request, builds);
+        final List<AbstractBuild> buildsRange = getBuildsRange(request);
 
-        final DataSetBuilder<String, NumberOnlyBuildLabel> dataSetBuilder = new DataSetBuilder<String, NumberOnlyBuildLabel>();
-
-        int nbBuildsToAnalyze = builds.size();
-        for (final AbstractBuild<?, ?> build : builds) {
-            if (buildsLimits.in(nbBuildsToAnalyze)) {
-
-                if (!buildsLimits.includedByStep(build.number)) {
-                    continue;
-                }
-
-                final PerformanceBuildAction performanceBuildAction = build.getAction(PerformanceBuildAction.class);
-                if (performanceBuildAction == null) {
-                    continue;
-                }
-
-                final PerformanceReport performanceReport = performanceBuildAction
-                        .getPerformanceReportMap().getPerformanceReport(performanceReportNameFile);
-                if (performanceReport == null) {
-                    nbBuildsToAnalyze--;
-                    continue;
-                }
-
-                final ThroughputReport throughputReport = new ThroughputReport(performanceReport);
-                final NumberOnlyBuildLabel label = new NumberOnlyBuildLabel(build);
-                dataSetBuilder.add(throughputReport.get(), Messages.ProjectAction_RequestsPerSeconds(), label);
-            }
-            nbBuildsToAnalyze--;
-        }
-
-        ChartUtil.generateGraph(request, response,
-                createThroughputChart(dataSetBuilder.build()), 400, 200);
+        ThroughputChart.render(request, response, performanceReportNameFile, buildsRange);
     }
 
   @SuppressWarnings("UnusedDeclaration")
@@ -577,7 +514,7 @@ public final class PerformanceProjectAction implements Action {
    * <p>
    * give a list of two Integer : the smallest build to use and the biggest.
    * </p>
-   * 
+   *
    * @param request
    * @param builds
    * @return outList
@@ -700,7 +637,7 @@ public final class PerformanceProjectAction implements Action {
 
   /**
    * Returns the graph configuration for this project.
-   * 
+   *
    * @param link
    *          not used
    * @param request
@@ -724,7 +661,7 @@ public final class PerformanceProjectAction implements Action {
 
   /**
    * Creates a view to configure the trend graph for the current user.
-   * 
+   *
    * @param request
    *          Stapler request
    * @return a view to configure the trend graph for the current user
@@ -737,7 +674,7 @@ public final class PerformanceProjectAction implements Action {
 
   /**
    * Creates a view to configure the trend graph for the current user.
-   * 
+   *
    * @param request
    *          Stapler request
    * @return a view to configure the trend graph for the current user

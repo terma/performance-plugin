@@ -264,17 +264,9 @@ public final class PerformanceProjectAction implements Action {
       return;
     }
     DataSetBuilder<String, NumberOnlyBuildLabel> dataSetBuilderErrors = new DataSetBuilder<String, NumberOnlyBuildLabel>();
-    List<? extends AbstractBuild<?, ?>> builds = getProject().getBuilds();
-    Range buildsLimits = getFirstAndLastBuild(request, builds);
+    final List<AbstractBuild> buildsRange = getBuildsRange(request);
 
-    int nbBuildsToAnalyze = builds.size();
-    for (AbstractBuild<?, ?> currentBuild : builds) {
-      if (buildsLimits.in(nbBuildsToAnalyze)) {
-
-        if (!buildsLimits.includedByStep(currentBuild.number)) {
-          continue;
-        }
-
+    for (AbstractBuild<?, ?> currentBuild : buildsRange) {
         NumberOnlyBuildLabel label = new NumberOnlyBuildLabel(currentBuild);
         PerformanceBuildAction performanceBuildAction = currentBuild
             .getAction(PerformanceBuildAction.class);
@@ -285,13 +277,10 @@ public final class PerformanceProjectAction implements Action {
             .getPerformanceReportMap().getPerformanceReport(
                 performanceReportNameFile);
         if (performanceReport == null) {
-          nbBuildsToAnalyze--;
           continue;
         }
         dataSetBuilderErrors.add(performanceReport.errorPercent(),
             Messages.ProjectAction_Errors(), label);
-      }
-      nbBuildsToAnalyze--;
     }
     ChartUtil.generateGraph(request, response,
         createErrorsChart(dataSetBuilderErrors.build()), 400, 200);
@@ -311,18 +300,11 @@ public final class PerformanceProjectAction implements Action {
       return;
     }
     DataSetBuilder<String, NumberOnlyBuildLabel> dataSetBuilderAverage = new DataSetBuilder<String, NumberOnlyBuildLabel>();
-    List<? extends AbstractBuild<?, ?>> builds = getProject().getBuilds();
-    Range buildsLimits = getFirstAndLastBuild(request, builds);
+    final List<AbstractBuild> buildsRange = getBuildsRange(request);
 
-    int nbBuildsToAnalyze = builds.size();
-
-    for (AbstractBuild<?, ?> build : builds) {
-      if (buildsLimits.in(nbBuildsToAnalyze)) {
+    for (AbstractBuild<?, ?> build : buildsRange) {
         NumberOnlyBuildLabel label = new NumberOnlyBuildLabel(build);
 
-        if (!buildsLimits.includedByStep(build.number)) {
-          continue;
-        }
         PerformanceBuildAction performanceBuildAction = build
             .getAction(PerformanceBuildAction.class);
         if (performanceBuildAction == null) {
@@ -332,7 +314,6 @@ public final class PerformanceProjectAction implements Action {
             .getPerformanceReportMap().getPerformanceReport(
                 performanceReportNameFile);
         if (performanceReport == null) {
-          nbBuildsToAnalyze--;
           continue;
         }
 
@@ -352,8 +333,6 @@ public final class PerformanceProjectAction implements Action {
           }
         }
 
-      }
-      nbBuildsToAnalyze--;
     }
     ChartUtil.generateGraph(request, response,
         createRespondingTimeChart(dataSetBuilderAverage.build()), 600, 200);
@@ -372,18 +351,11 @@ public final class PerformanceProjectAction implements Action {
       response.sendRedirect2(request.getContextPath() + "/images/headless.png");
       return;
     }
+
+    final List<AbstractBuild> buildsRange = getBuildsRange(request);
     DataSetBuilder<String, NumberOnlyBuildLabel> dataSetBuilderAverage = new DataSetBuilder<String, NumberOnlyBuildLabel>();
-    List<? extends AbstractBuild<?, ?>> builds = getProject().getBuilds();
-    Range buildsLimits = getFirstAndLastBuild(request, builds);
 
-    int nbBuildsToAnalyze = builds.size();
-    for (AbstractBuild<?, ?> build : builds) {
-      if (buildsLimits.in(nbBuildsToAnalyze)) {
-
-        if (!buildsLimits.includedByStep(build.number)) {
-          continue;
-        }
-
+    for (AbstractBuild<?, ?> build : buildsRange) {
         NumberOnlyBuildLabel label = new NumberOnlyBuildLabel(build);
         PerformanceBuildAction performanceBuildAction = build
             .getAction(PerformanceBuildAction.class);
@@ -394,18 +366,12 @@ public final class PerformanceProjectAction implements Action {
             .getPerformanceReportMap().getPerformanceReport(
                 performanceReportNameFile);
         if (performanceReport == null) {
-          nbBuildsToAnalyze--;
           continue;
         }
-        dataSetBuilderAverage.add(performanceReport.getMedian(),
-            Messages.ProjectAction_Median(), label);
-        dataSetBuilderAverage.add(performanceReport.getAverage(),
-            Messages.ProjectAction_Average(), label);
-        dataSetBuilderAverage.add(performanceReport.get90Line(),
-            Messages.ProjectAction_Line90(), label);
-      }
-      nbBuildsToAnalyze--;
-      continue;
+
+        dataSetBuilderAverage.add(performanceReport.getMedian(), Messages.ProjectAction_Median(), label);
+        dataSetBuilderAverage.add(performanceReport.getAverage(), Messages.ProjectAction_Average(), label);
+        dataSetBuilderAverage.add(performanceReport.get90Line(), Messages.ProjectAction_Line90(), label);
     }
     ChartUtil.generateGraph(request, response,
         createRespondingTimeChart(dataSetBuilderAverage.build()), 400, 200);
@@ -447,66 +413,56 @@ public final class PerformanceProjectAction implements Action {
       request.bindParameters(performanceReportPosition);
       final String performanceReportNameFile = getPerformanceReportNameFile(performanceReportPosition);
 
-    if (ChartUtil.awtProblemCause != null) {
-      // not available. send out error message
-      // response.sendRedirect2(request.getContextPath() +
-      // "/images/headless.png");
-      return;
-    }
-    DataSetBuilder<NumberOnlyBuildLabel, String> dataSetBuilderSummarizer = new DataSetBuilder<NumberOnlyBuildLabel, String>();
-    DataSetBuilder<NumberOnlyBuildLabel, String> dataSetBuilderSummarizerErrors = new DataSetBuilder<NumberOnlyBuildLabel, String>();
-
-    List<?> builds = getProject().getBuilds();
-    Range buildsLimits = getFirstAndLastBuild(request, builds);
-
-    int nbBuildsToAnalyze = builds.size();
-    for (Iterator<?> iterator = builds.iterator(); iterator.hasNext();) {
-      AbstractBuild<?, ?> currentBuild = (AbstractBuild<?, ?>) iterator.next();
-      if (buildsLimits.in(nbBuildsToAnalyze)) {
-        NumberOnlyBuildLabel label = new NumberOnlyBuildLabel(currentBuild);
-        PerformanceBuildAction performanceBuildAction = currentBuild
-            .getAction(PerformanceBuildAction.class);
-        if (performanceBuildAction == null) {
-          continue;
-        }
-        PerformanceReport performanceReport = performanceBuildAction
-            .getPerformanceReportMap().getPerformanceReport(
-                performanceReportNameFile);
-
-        if (performanceReport == null) {
-          nbBuildsToAnalyze--;
-          continue;
-        }
-
-        for (String key : performanceReport.getUriReportMap().keySet()) {
-          Long methodAvg = performanceReport.getUriReportMap().get(key)
-              .getAverage();
-          float methodErrors = Float.valueOf(performanceReport
-              .getUriReportMap().get(key).getSummarizerErrors());
-          dataSetBuilderSummarizer.add(methodAvg, label, key);
-          dataSetBuilderSummarizerErrors.add(methodErrors, label, key);
-        }
-        ;
+      if (ChartUtil.awtProblemCause != null) {
+          // not available. send out error message
+          // response.sendRedirect2(request.getContextPath() +
+          // "/images/headless.png");
+          return;
       }
-      nbBuildsToAnalyze--;
-    }
+      DataSetBuilder<NumberOnlyBuildLabel, String> dataSetBuilderSummarizer = new DataSetBuilder<NumberOnlyBuildLabel, String>();
+      DataSetBuilder<NumberOnlyBuildLabel, String> dataSetBuilderSummarizerErrors = new DataSetBuilder<NumberOnlyBuildLabel, String>();
 
-    String summarizerReportType = performanceReportPosition
-        .getSummarizerReportType();
+      final List<AbstractBuild> buildsRange = getBuildsRange(request);
 
-    if (summarizerReportType != null) {
-      ChartUtil.generateGraph(
-          request,
-          response,
-          createSummarizerChart(dataSetBuilderSummarizerErrors.build(), "%",
-              Messages.ProjectAction_PercentageOfErrors()), 400, 200);
-    } else {
-      ChartUtil.generateGraph(
-          request,
-          response,
-          createSummarizerChart(dataSetBuilderSummarizer.build(), "ms",
-              Messages.ProjectAction_RespondingTime()), 400, 200);
-    }
+      for (AbstractBuild build : buildsRange) {
+          NumberOnlyBuildLabel label = new NumberOnlyBuildLabel(build);
+          PerformanceBuildAction performanceBuildAction = build.getAction(PerformanceBuildAction.class);
+          if (performanceBuildAction == null) {
+              continue;
+          }
+          PerformanceReport performanceReport = performanceBuildAction
+                  .getPerformanceReportMap().getPerformanceReport(
+                          performanceReportNameFile);
+
+          if (performanceReport == null) {
+              continue;
+          }
+
+          for (String key : performanceReport.getUriReportMap().keySet()) {
+              Long methodAvg = performanceReport.getUriReportMap().get(key)
+                      .getAverage();
+              float methodErrors = Float.valueOf(performanceReport
+                      .getUriReportMap().get(key).getSummarizerErrors());
+              dataSetBuilderSummarizer.add(methodAvg, label, key);
+              dataSetBuilderSummarizerErrors.add(methodErrors, label, key);
+          }
+      }
+
+      String summarizerReportType = performanceReportPosition.getSummarizerReportType();
+
+      if (summarizerReportType != null) {
+          ChartUtil.generateGraph(
+                  request,
+                  response,
+                  createSummarizerChart(dataSetBuilderSummarizerErrors.build(), "%",
+                          Messages.ProjectAction_PercentageOfErrors()), 400, 200);
+      } else {
+          ChartUtil.generateGraph(
+                  request,
+                  response,
+                  createSummarizerChart(dataSetBuilderSummarizer.build(), "ms",
+                          Messages.ProjectAction_RespondingTime()), 400, 200);
+      }
   }
 
   /**

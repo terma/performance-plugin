@@ -839,20 +839,19 @@ public final class PerformanceProjectAction implements Action {
 
   public static class Range {
 
-    public int first;
+    public final int first;
 
-    public int last;
+    public final int last;
 
-    public int step;
+    public final int step;
 
     public Range(int first, int last) {
-      this.first = first;
-      this.last = last;
-      this.step = 1;
+      this(first, last, 1);
     }
 
     public Range(int first, int last, int step) {
-      this(first, last);
+        this.first = first;
+        this.last = last;
       this.step = step;
     }
 

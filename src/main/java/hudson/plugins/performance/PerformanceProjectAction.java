@@ -469,9 +469,10 @@ public final class PerformanceProjectAction implements Action {
             return;
         }
 
-        final DataSetBuilder<String, NumberOnlyBuildLabel> dataSetBuilder = new DataSetBuilder<String, NumberOnlyBuildLabel>();
         final List<? extends AbstractBuild<?, ?>> builds = getProject().getBuilds();
         final Range buildsLimits = getFirstAndLastBuild(request, builds);
+
+        final DataSetBuilder<String, NumberOnlyBuildLabel> dataSetBuilder = new DataSetBuilder<String, NumberOnlyBuildLabel>();
 
         int nbBuildsToAnalyze = builds.size();
         for (final AbstractBuild<?, ?> build : builds) {
@@ -860,10 +861,7 @@ public final class PerformanceProjectAction implements Action {
     }
 
     public boolean includedByStep(int buildNumber) {
-      if (buildNumber % step == 0) {
-        return true;
-      }
-      return false;
+        return buildNumber % step == 0;
     }
 
   }
